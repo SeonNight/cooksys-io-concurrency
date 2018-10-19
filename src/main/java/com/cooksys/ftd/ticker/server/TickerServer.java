@@ -17,6 +17,7 @@ import java.util.Set;
 public class TickerServer {
 
     public static void main(String[] args) {
+    	System.out.println("--Server--");
 
         try {
             JAXBContext context = JAXBContext.newInstance(QuoteField.class, QuoteRequest.class);
@@ -48,7 +49,6 @@ public class TickerServer {
         } catch (IOException | JAXBException e) {
             e.printStackTrace();
         }
-
 
     }
 
