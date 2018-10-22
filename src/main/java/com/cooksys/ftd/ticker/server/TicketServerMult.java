@@ -2,7 +2,6 @@ package com.cooksys.ftd.ticker.server;
 
 import java.io.IOException;
 import java.net.ServerSocket;
-import java.net.Socket;
 import java.util.concurrent.atomic.AtomicInteger;
 
 
@@ -12,16 +11,21 @@ public class TicketServerMult {
     public static void main(String[] args) {
     	System.out.println("--Server--");
 
-    	while(true) {
-    		try (
-    			ServerSocket serverSocket = new ServerSocket(3000);
-    		) {
-    			new Thread(new TicketClientHandler(serverSocket.accept())).start();
-				System.out.println("Added Client: " + TicketServerMult.addClient());
-    		} catch (IOException e) {
-    			System.out.println("Server Failed: ");
-    		    e.printStackTrace();
-    		}
+    	try (
+    		ServerSocket serverSocket = new ServerSocket(3000);
+    	) {
+			while(true) { //(use interval to determine how frequently to fetch quotes)
+				try {
+					new Thread(new TicketClientHandler(serverSocket.accept())).start();
+					System.out.println("Added Client: " + TicketServerMult.addClient());
+				} catch (IOException e) {
+					System.out.println("Server Connection Failed: ");
+				    e.printStackTrace();
+				}
+			}
+    	} catch (IOException e) {
+    		System.out.println("Server Failed To Open: ");
+    		e.printStackTrace();
     	}
 
     }
