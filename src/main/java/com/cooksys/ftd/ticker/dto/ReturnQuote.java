@@ -1,11 +1,8 @@
 package com.cooksys.ftd.ticker.dto;
 
-import java.util.Set;
-
 import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlElement;
-import javax.xml.bind.annotation.XmlElementWrapper;
 import javax.xml.bind.annotation.XmlRootElement;
 
 @XmlRootElement
@@ -14,8 +11,8 @@ public class ReturnQuote {
 	@XmlElement(name = "symbol")
 	private String symbol;
 
-	@XmlElementWrapper
-	private Set<ReturnQuoteField> fields;
+	@XmlElement(name = "fields")
+	private ReturnQuoteField fields;
 
 	public String getSymbol() {
 		return symbol;
@@ -25,11 +22,11 @@ public class ReturnQuote {
 		this.symbol = symbol;
 	}
 
-	public Set<ReturnQuoteField> getFields() {
+	public ReturnQuoteField getFields() {
 		return fields;
 	}
 
-	public void setFields(Set<ReturnQuoteField> fields) {
+	public void setFields(ReturnQuoteField fields) {
 		this.fields = fields;
 	}
 }

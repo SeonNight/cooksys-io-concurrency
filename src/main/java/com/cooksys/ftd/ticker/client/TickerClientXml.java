@@ -74,18 +74,10 @@ public class TickerClientXml implements Runnable {
 				// Unmarshall stringReader to QuoteRequest object
 				StringReader stringReader = new StringReader(
 						new BufferedReader(new InputStreamReader(socket.getInputStream())).readLine());
-				ReturnQuotes returnQuotes = (ReturnQuotes) quoteUnmarshaller.unmarshal(stringReader);
-				quoteMarshaller.marshal(returnQuotes, new FileOutputStream("test.xml"));
+				quoteMarshaller.marshal((ReturnQuotes) quoteUnmarshaller.unmarshal(stringReader), new FileOutputStream("output.xml"));
 
-				System.out.println("UpdateQuotes: ");
-				for (ReturnQuote r : returnQuotes.getQuotes()) {
-					System.out.println(" Symbol: " + r.getSymbol());
-					for (ReturnQuoteField f : r.getFields()) {
-						System.out.println("     Fields: " + f.getOpen());
-					}
-
-				}
-
+				//System.out.println(Thread.currentThread().getId() + ": UpdateQuotes");
+				
 				Thread.sleep(interval);
 			}
 

@@ -14,7 +14,7 @@ public class TicketServerMult {
     	try (
     		ServerSocket serverSocket = new ServerSocket(3000);
     	) {
-			while(true) { //(use interval to determine how frequently to fetch quotes)
+			while(true) {
 				try {
 					new Thread(new TicketClientHandler(serverSocket.accept())).start();
 					System.out.println("Added Client: " + TicketServerMult.addClient());

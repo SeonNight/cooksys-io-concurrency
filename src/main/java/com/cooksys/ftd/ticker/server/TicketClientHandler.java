@@ -108,9 +108,8 @@ public class TicketClientHandler implements Runnable {
 		for (Quote q : quotes) {
 			ReturnQuote returnQuote = new ReturnQuote();
 			returnQuote.setSymbol(q.getSymbol());
-			Set<ReturnQuoteField> returnQuoteFields = new HashSet<ReturnQuoteField>();
+			ReturnQuoteField returnQuoteField = new ReturnQuoteField();
 			for (QuoteField qf : quoteRequestField) {
-				ReturnQuoteField returnQuoteField = new ReturnQuoteField();
 				switch (qf.getField()) {
 				case "open":
 					returnQuoteField.setOpen(q.getOpen());
@@ -136,9 +135,8 @@ public class TicketClientHandler implements Runnable {
 				default:
 					break;
 				}
-				returnQuoteFields.add(returnQuoteField);
 			}
-			returnQuote.setFields(returnQuoteFields);
+			returnQuote.setFields(returnQuoteField);
 			returnQuoteSet.add(returnQuote);
 		}
 
