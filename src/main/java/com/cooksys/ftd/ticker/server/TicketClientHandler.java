@@ -26,6 +26,7 @@ import com.cooksys.ftd.ticker.dto.ReturnQuotes;
 
 import pl.zankowski.iextrading4j.api.stocks.Quote;
 
+//Server thread that handles client
 public class TicketClientHandler implements Runnable {
 	private Socket clientSocket;
 
@@ -34,10 +35,33 @@ public class TicketClientHandler implements Runnable {
 	}
 
 	public void run() {
-		try {
-			DataInputStream dataIn = new DataInputStream(this.clientSocket.getInputStream());
-			// Interval of waiting and responding
-			int interval = dataIn.readInt();
+		try (
+				// Input to receive interval
+				DataInputStream dataIn = new DataInputStream(this.clientSocket.getInputStream());
+				// Create buffered reader and string reader to read a request from a client
+				BufferedReader in = new BufferedReader(new InputStreamReader(this.clientSocket.getInputStream()));
+				// Create bufferedWriter from socket outpustream and write stringWriter to
+				// client
+				BufferedWriter out = new BufferedWriter(new OutputStreamWriter(clientSocket.getOutputStream()));) {
+			// Unmarshallar for requests
+			JAXBContext context = JAXBContext.newInstance(QuoteField.class, QuoteRequest.class);
+			Unmarshaller unmarshaller = context.createUnmarshaller();
+			// Marshaller for quotes
+			JAXBContext quoteContext = JAXBContext.newInstance(ReturnQuoteField.class, ReturnQuote.class,
+					ReturnQuotes.class);
+			Marshaller quoteMarshaller = quoteContext.createMarshaller();
+
+			StringReader stringReader; // Read quote Requests from client
+			StringWriter stringWriter; // StringWriter to send store RequestQuotes to send to client
+
+			QuoteRequest quoteRequest; // Receive request from client
+			ReturnQuotes returnQuotes; // xml formated quotes to send to client
+			Set<Quote> quotes; // Quotes fetched from StockApi
+
+			int interval; // Interval of waiting to update quote request
+
+			// Receive interval if failed return
+			interval = dataIn.readInt();
 			if (interval < 1 || interval > 10) {
 				System.out.println("Interval too big or too small: " + interval);
 				return;
@@ -45,62 +69,46 @@ public class TicketClientHandler implements Runnable {
 				interval *= 1000;
 			}
 
-			// Create buffered reader and string reader to read a request from a client
-			// socket inputstream
-			StringReader stringReader = new StringReader(
-					new BufferedReader(new InputStreamReader(this.clientSocket.getInputStream())).readLine());
-			// request
-			JAXBContext context = JAXBContext.newInstance(QuoteField.class, QuoteRequest.class);
-			Unmarshaller unmarshaller = context.createUnmarshaller();
-			// returnQuote
-			JAXBContext quoteContext = JAXBContext.newInstance(ReturnQuoteField.class, ReturnQuote.class,
-					ReturnQuotes.class);
-			Marshaller quoteMarshaller = quoteContext.createMarshaller();
-
 			// Unmarshall stringReader to QuoteRequest object
-			QuoteRequest quoteRequest = (QuoteRequest) unmarshaller.unmarshal(stringReader);
+			stringReader = new StringReader(in.readLine());
+			quoteRequest = (QuoteRequest) unmarshaller.unmarshal(stringReader);
 
+			// Repeat until server or client shuts down
 			while (true) {
 				// Fetch quotes for each
-				Set<Quote> quotes = StockApi.fetchQuotes(quoteRequest);
-				ReturnQuotes returnQuotes = TicketClientHandler.QuoteToXml(quotes, quoteRequest.getFields());
-				// quoteMarshaller.marshal(returnQuotes, new FileOutputStream("test.xml"));
+				quotes = StockApi.fetchQuotes(quoteRequest);
+				returnQuotes = TicketClientHandler.QuoteToXml(quotes, quoteRequest.getFields());
 
 				// Marshal request to stringWriter (Formatting request to send to server)
-				StringWriter stringWriter = new StringWriter();
+				stringWriter = new StringWriter();
 				quoteMarshaller.marshal(returnQuotes, stringWriter);
 
-				// Create bufferedWriter from socket outpustream and write stringWriter to
-				// out.write()
-				BufferedWriter out = new BufferedWriter(new OutputStreamWriter(clientSocket.getOutputStream()));
+				// write xml to client
 				out.write(stringWriter.toString()); // push request it to server
 				out.newLine(); // Push a new line
 				out.flush();
 
+				// Wait to update request
 				Thread.sleep(interval);
 			}
 		} catch (IOException | JAXBException e) {
 			System.out.println("Client Handler Failed: ");
 			e.printStackTrace();
 		} catch (InterruptedException e) {
-			System.out.println("Error in Sleep: ");
+			System.out.println("Error during Sleep: ");
 			e.printStackTrace();
 		}
 
+		// Close client socket
 		try {
 			this.clientSocket.close();
 		} catch (IOException e) {
 			System.out.println("Failed to close ClinetHandler: ");
 			e.printStackTrace();
 		}
-
-		System.out.println("Removed Client: " + TicketServerMult.removeClient());
 	}
 
-	public Socket getClientSocket() {
-		return this.clientSocket;
-	}
-
+	// Turns given quotes into xml file
 	public static ReturnQuotes QuoteToXml(Set<Quote> quotes, Set<QuoteField> quoteRequestField) {
 		ReturnQuotes returnQuotes = new ReturnQuotes();
 		Set<ReturnQuote> returnQuoteSet = new HashSet<ReturnQuote>();

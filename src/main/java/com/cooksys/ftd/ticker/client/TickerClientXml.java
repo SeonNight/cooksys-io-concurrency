@@ -31,7 +31,6 @@ public class TickerClientXml implements Runnable {
 
 		// List of fields that the client is requesting on a quote
 		Set<QuoteField> fields = new HashSet<>(Collections.singletonList((QuoteField.LATEST_PRICE)));
-		fields.add(QuoteField.OPEN);
 
 		// Stock ticker symbols client is requesting
 		Set<String> symbols = new HashSet<>(Arrays.asList("NIO", "TWTR"));
@@ -42,42 +41,56 @@ public class TickerClientXml implements Runnable {
 		// up,
 		// and symbols are what you want to look up.
 
-		try (Socket socket = new Socket("localhost", 3000);) {
-			DataOutputStream dataOut = new DataOutputStream(socket.getOutputStream());
-			int interval = 10;
+		try (
+				// Try to connect to server
+				Socket socket = new Socket("localhost", 3000);
+				// used to send interval
+				DataOutputStream dataOut = new DataOutputStream(socket.getOutputStream());
+				// Used to send request to server
+				BufferedWriter out = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
+				// Used to receive quotes from server
+				BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()))) {
+			// Marshaller for quote request to send to server
+			JAXBContext context = JAXBContext.newInstance(QuoteField.class, QuoteRequest.class);
+			Marshaller marshaller = context.createMarshaller();
+
+			// Marshaller and Unmarshaller for received quotes
+			JAXBContext quoteContext = JAXBContext.newInstance(ReturnQuoteField.class, ReturnQuote.class,
+					ReturnQuotes.class);
+			Marshaller quoteMarshaller = quoteContext.createMarshaller();
+			Unmarshaller quoteUnmarshaller = quoteContext.createUnmarshaller();
+
+			StringWriter stringWriter; // writer to store request to send to server
+			StringReader stringReader; // reader to read quotes from server
+
+			int interval = 10; // interval of how long to wait till update
+
 			// Send out interval
 			dataOut.writeInt(interval);
 			dataOut.flush();
 
 			interval *= 1000;
 
-			JAXBContext context = JAXBContext.newInstance(QuoteField.class, QuoteRequest.class);
-			Marshaller marshaller = context.createMarshaller();
-
 			// Marshal request to stringWriter (Formatting request to send to server)
-			StringWriter stringWriter = new StringWriter();
+			stringWriter = new StringWriter();
 			marshaller.marshal(request, stringWriter);
 
 			// Create bufferedWriter from socket outpustream and write stringWriter to
 			// out.write()
-			BufferedWriter out = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
 			out.write(stringWriter.toString()); // push request it to server
 			out.newLine(); // Push a new line
 			out.flush();
 
+			//Loop until server or client dies
 			while (true) {
 				// Get response and output into a file
-				JAXBContext quoteContext = JAXBContext.newInstance(ReturnQuoteField.class, ReturnQuote.class,
-						ReturnQuotes.class);
-				Marshaller quoteMarshaller = quoteContext.createMarshaller();
-				Unmarshaller quoteUnmarshaller = quoteContext.createUnmarshaller();
 				// Unmarshall stringReader to QuoteRequest object
-				StringReader stringReader = new StringReader(
-						new BufferedReader(new InputStreamReader(socket.getInputStream())).readLine());
-				quoteMarshaller.marshal((ReturnQuotes) quoteUnmarshaller.unmarshal(stringReader), new FileOutputStream("output.xml"));
+				stringReader = new StringReader(in.readLine());
+				// There is probably a better way to do this, but this is what I got...
+				quoteMarshaller.marshal((ReturnQuotes) quoteUnmarshaller.unmarshal(stringReader),
+						new FileOutputStream("output.xml"));
 
-				//System.out.println(Thread.currentThread().getId() + ": UpdateQuotes");
-				
+				// wait than receive new quotes from server
 				Thread.sleep(interval);
 			}
 
@@ -85,7 +98,7 @@ public class TickerClientXml implements Runnable {
 			System.out.println("Client Failed: ");
 			e.printStackTrace();
 		} catch (InterruptedException e) {
-			System.out.println("Error in Sleep: ");
+			System.out.println("Error during Sleep: ");
 			e.printStackTrace();
 		}
 
